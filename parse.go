@@ -52,66 +52,69 @@ func readMetadata(r io.ReadSeeker) (*fontMetadata, error) {
 			continue
 		}
 		offset := u32(table[8:12])
-
-		if _, err := r.Seek(int64(offset), 0); err != nil {
-			return nil, fmt.Errorf("invalid font file")
-		}
-
-		nameTable, err := read(r, 6)
-		if err != nil {
-			return nil, err
-		}
-
-		nameCount := u16(nameTable[2:4])
-		stringOffset := int64(u16(nameTable[4:6])) + int64(offset)
-
-		var metadata fontMetadata
-		var done uint8
-
-		nameRecordStart := offset + 6
-
-		for j := 0; j < int(nameCount); j++ {
-			recordOffset := nameRecordStart + uint32(12*j)
-			if _, err := r.Seek(int64(recordOffset), 0); err != nil {
-				return nil, err
-			}
-			buf, err := read(r, 12)
-			if err != nil {
-				return nil, err
-			}
-			language := u16(buf[4:6])
-			if language != 0 && language != 1033 { // not english or english us
-				continue
-			}
-			nameID := u16(buf[6:8])
-
-			switch nameID {
-			case 1, 2: //family, style
-
-				if _, err := r.Seek(int64(stringOffset)+int64(u16(buf[10:12])), 0); err != nil {
-					return nil, err
-				}
-				raw, err := read(r, int(u16(buf[8:10])))
-				if err != nil {
-					return nil, err
-				}
-				if nameID == 1 {
-					done |= 1
-					metadata.FontFamily = string(raw)
-				} else {
-					done |= 2
-					metadata.FontStyle = string(raw)
-				}
-				if done == 3 { // bail early if we have what we need
-					return &metadata, nil
-				}
-
-			}
-		}
-
-		return &metadata, nil
-
+		return readNameTable(r, offset)
 	}
 
 	return nil, fmt.Errorf("name table not found")
+}
+
+func readNameTable(r io.ReadSeeker, offset uint32) (*fontMetadata, error) {
+
+	if _, err := r.Seek(int64(offset), 0); err != nil {
+		return nil, fmt.Errorf("invalid font file")
+	}
+
+	nameTable, err := read(r, 6)
+	if err != nil {
+		return nil, err
+	}
+
+	nameCount := u16(nameTable[2:4])
+	stringOffset := int64(u16(nameTable[4:6])) + int64(offset)
+
+	var done uint8
+	var metadata fontMetadata
+
+	nameRecordStart := offset + 6
+
+	for j := 0; j < int(nameCount); j++ {
+		recordOffset := nameRecordStart + uint32(12*j)
+		if _, err := r.Seek(int64(recordOffset), 0); err != nil {
+			return nil, err
+		}
+		buf, err := read(r, 12)
+		if err != nil {
+			return nil, err
+		}
+		language := u16(buf[4:6])
+		if language != 0 && language != 1033 { // not english or english us
+			continue
+		}
+		nameID := u16(buf[6:8])
+
+		switch nameID {
+		case 1, 2: //family, style
+
+			if _, err := r.Seek(int64(stringOffset)+int64(u16(buf[10:12])), 0); err != nil {
+				return nil, err
+			}
+			raw, err := read(r, int(u16(buf[8:10])))
+			if err != nil {
+				return nil, err
+			}
+			if nameID == 1 {
+				done |= 1
+				metadata.FontFamily = string(raw)
+			} else {
+				done |= 2
+				metadata.FontStyle = string(raw)
+			}
+			if done == 3 { // bail early if we have what we need
+				return &metadata, nil
+			}
+
+		}
+	}
+
+	return &metadata, nil
 }
