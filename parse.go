@@ -35,8 +35,6 @@ func readMetadata(r io.ReadSeeker) (*fontMetadata, error) {
 		return nil, err
 	}
 
-	// TODO check magic bytes
-	//_ = version := u32(buf)
 	tableCount := u16(buf[4:6])
 
 	for i := 0; i < int(tableCount); i++ {
