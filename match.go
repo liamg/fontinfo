@@ -1,7 +1,6 @@
 package fontinfo
 
 import (
-	"fmt"
 	"io/fs"
 	"os"
 	"os/user"
@@ -54,7 +53,6 @@ func Match(matchers ...matcher) ([]Font, error) {
 
 		if home != "" && strings.HasPrefix(dir, "~/") {
 			dir = filepath.Join(home, dir[2:])
-			fmt.Println(dir)
 		}
 
 		if info, err := os.Stat(dir); os.IsNotExist(err) {
